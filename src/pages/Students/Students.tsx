@@ -4,7 +4,9 @@ import { Link } from 'react-router-dom'
 import { Students as StudentsType } from 'types/students.type'
 import { useQuery } from '@tanstack/react-query'
 import { useQueyString } from 'utils/utils'
+import classNames from 'classnames'
 
+const LIMIT = 10
 export default function Students() {
   // const [students, setStudents] = useState<StudentsType>([])
   // const [isLoading, setIsLoading] = useState<boolean>(false)
@@ -25,13 +27,22 @@ export default function Students() {
 
   // nếu page undefined thì lấy là 1
   const page = Number(queryString.page) || 1
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, status, error, fetchStatus, isFetching } = useQuery({
     // phải đặt params vào trong queryKey. Khi đặt vào trong queryKey khi cái params (cụ thể page) thay đổi thì nó sẽ tự động gọi lại function
     queryKey: ['students', page],
 
     // queryFn nhận vào 1 function, nếu truyền như getStudents(page,10) thì truyền giá trị return của getStudents như thế ko đúng. queryFn nhận vào là 1 cái function nên ta truyền callback ()=>getStudents(page,10)
-    queryFn: () => getStudents(page, 10)
+    queryFn: () => getStudents(page, LIMIT),
+
+    // giữ lại data trước đó ko đc xét undefined (khi mà nó fetch thành công thì nó cập nhật lại data cho chúng ta)
+    keepPreviousData: true
   })
+
+  const totalStudentCount = Number(data?.headers['x-total-count'] || 0)
+  const totalPage = Math.ceil(totalStudentCount / LIMIT)
+
+  // loading về cái status (status nó đại diện data có hay không). Data có rồi nên loading nó ko load nữa, mà isFetching là true mặc dù data đã có nó vẫn fetch lại API(nó cập nhật dữ liệu mới)
+  console.log('isLoading', isLoading, 'isFetching', isFetching)
 
   return (
     <div>
@@ -188,25 +199,56 @@ export default function Students() {
         <nav aria-label='Page navigation example'>
           <ul className='inline-flex -space-x-px'>
             <li>
-              <span className='cursor-not-allowed rounded-l-lg border border-gray-300 bg-white py-2 px-3 leading-tight text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white'>
-                Previous
-              </span>
+              {page === 1 ? (
+                // Thẻ span ko thể click đc
+                <span className='cursor-not-allowed rounded-l-lg border border-gray-300 bg-white py-2 px-3 leading-tight text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white'>
+                  Previous
+                </span>
+              ) : (
+                <Link
+                  to={`/students?page=${page - 1}`}
+                  className='cursor-not-allowed rounded-l-lg border border-gray-300 bg-white py-2 px-3 leading-tight text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white'
+                >
+                  Previous
+                </Link>
+              )}
             </li>
+
+            {Array(totalPage)
+              .fill(0)
+              .map((_, index) => {
+                const pageNumber = index + 1
+                const isActive = page === pageNumber
+                return (
+                  <li key={pageNumber}>
+                    <Link
+                      className={classNames('border border-gray-300   py-2 px-3 leading-tight  hover:text-gray-700', {
+                        // Khi có active thì 'bg-gray-100 text-gray-700'
+                        'bg-gray-100 text-gray-700': isActive,
+                        // Khi không có active thì 'bg-white text-gray-500'
+                        'bg-white text-gray-500': !isActive
+                      })}
+                      to={`/students?page=${pageNumber}`}
+                    >
+                      {pageNumber}
+                    </Link>
+                  </li>
+                )
+              })}
+
             <li>
-              <a
-                className='border border-gray-300 bg-white bg-white py-2 px-3 leading-tight text-gray-500 text-gray-500  hover:bg-gray-100 hover:bg-gray-100 hover:text-gray-700 hover:text-gray-700'
-                href='/students?page=8'
-              >
-                1
-              </a>
-            </li>
-            <li>
-              <a
-                className='rounded-r-lg border border-gray-300 bg-white py-2 px-3 leading-tight text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white'
-                href='/students?page=1'
-              >
-                Next
-              </a>
+              {page === totalPage ? (
+                <span className='rounded-r-lg border border-gray-300 bg-white py-2 px-3 leading-tight text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white'>
+                  Next
+                </span>
+              ) : (
+                <Link
+                  to={`/students?page=${page + 1}`}
+                  className='rounded-r-lg border border-gray-300 bg-white py-2 px-3 leading-tight text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white'
+                >
+                  Next
+                </Link>
+              )}
             </li>
           </ul>
         </nav>
