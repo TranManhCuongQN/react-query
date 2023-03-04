@@ -1,8 +1,8 @@
-import { deleteStudent, getStudents } from 'apis/students.api'
+import { deleteStudent, getStudent, getStudents } from 'apis/students.api'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Students as StudentsType } from 'types/students.type'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useQueyString } from 'utils/utils'
 import classNames from 'classnames'
 import { toast } from 'react-toastify'
@@ -25,6 +25,7 @@ export default function Students() {
   // }, [])
 
   const queryString: { page?: string } = useQueyString()
+  const queryClient = useQueryClient()
 
   // nếu page undefined thì lấy là 1
   const page = Number(queryString.page) || 1
@@ -49,11 +50,26 @@ export default function Students() {
     mutationFn: (id: number | string) => deleteStudent(id),
     onSuccess: (_, id) => {
       toast.success(`Xóa thành công student với id là ${id}`)
+
+      // mỗi lần delete thành công nó sẽ báo data cũ rồi nên cần cập nhật lại thì nó gọi lại queryFn
+      // queryClient.invalidateQueries({ queryKey: ['students', page] })
+
+      // trường hợp này vẫn đúng vì có queryKey là ['students] đầu tiên. Trong trường hợp này muốn chính xác queryKey thì dùng exact: true
+      //* Invalidate
+      queryClient.invalidateQueries({ queryKey: ['students'], exact: true })
     }
   })
 
   const handleDelete = (id: number) => {
     deleteStudentMutation.mutate(id)
+  }
+
+  // * Prefetching
+  const handlePrefetchStudent = (id: number) => {
+    queryClient.prefetchQuery(['student', String(id)], {
+      queryFn: () => getStudent(id),
+      staleTime: 10 * 1000
+    })
   }
 
   return (
@@ -192,6 +208,7 @@ export default function Students() {
                 <tr
                   className='border-b bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-600'
                   key={student.id}
+                  onMouseEnter={() => handlePrefetchStudent(student.id)}
                 >
                   <td className='py-4 px-6'>{student.id}</td>
                   <td className='py-4 px-6'>

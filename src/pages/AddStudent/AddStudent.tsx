@@ -1,12 +1,13 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { addStudent, getStudent, updateStudent } from 'apis/students.api'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMatch, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { Student } from 'types/students.type'
 import { isAxiosError } from 'utils/utils'
 
 type FormStateType = Omit<Student, 'id'> | Student
+
 const initialFormState: FormStateType = {
   first_name: '',
   last_name: '',
@@ -23,6 +24,13 @@ type FormError =
       [key in keyof FormStateType]: string
     }
   | null
+
+const gender = {
+  male: 'Male',
+  female: 'Female',
+  other: 'Other'
+}
+
 export default function AddStudent() {
   // Nếu nó match thì nó trả về object, nếu không thì nó trả về null
   const addMatch = useMatch('/students/add')
@@ -30,6 +38,7 @@ export default function AddStudent() {
   // Nếu có data thì chúng ta ở chế độ thêm, không có data chúng ta ở chế độ edit
   const isAddMode = Boolean(addMatch)
   const { id } = useParams()
+  const queryClient = useQueryClient()
 
   const [formState, setFormState] = useState<FormStateType>(initialFormState)
 
@@ -43,7 +52,7 @@ export default function AddStudent() {
     }
   })
 
-  useQuery({
+  const studentQuery = useQuery({
     queryKey: ['student', id],
     queryFn: () => getStudent(id as string),
 
@@ -51,14 +60,26 @@ export default function AddStudent() {
     enabled: id !== undefined,
 
     // khi Fetch api thành công onSuccess
-    onSuccess: (data) => {
-      setFormState(data.data)
-    }
+    // onSuccess: (data) => {
+    //   setFormState(data.data)
+    // },
+
+    // Khi useQuery nó gọi thì nó sẽ bắt đầu kiểm tra thử kết quả trước đấy đã quá 10s hay chưa. Nếu đã quá 10s rồi thì nó gọi queryFn ko thì nó ko gọi
+    staleTime: 1000 * 10
   })
+
+  useEffect(() => {
+    if (studentQuery.data) {
+      setFormState(studentQuery.data.data)
+    }
+  }, [studentQuery.data])
 
   const updateStudentMutation = useMutation({
     mutationFn: (_) => {
       return updateStudent(id as string, formState as Student)
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(['student', id], data)
     }
   })
 
@@ -144,9 +165,9 @@ export default function AddStudent() {
                   id='gender-1'
                   type='radio'
                   name='gender'
-                  value='male'
+                  value={gender.male}
                   className='h-4 w-4 border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-blue-600'
-                  checked={formState.gender === 'male'}
+                  checked={formState.gender === gender.male}
                   onChange={handleChange('gender')}
                 />
                 <label htmlFor='gender-1' className='ml-2 text-sm font-medium text-gray-900 dark:text-gray-300'>
@@ -158,9 +179,9 @@ export default function AddStudent() {
                   id='gender-2'
                   type='radio'
                   name='gender'
-                  value='female'
+                  value={gender.female}
                   className='h-4 w-4 border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-blue-600'
-                  checked={formState.gender === 'female'}
+                  checked={formState.gender === gender.female}
                   onChange={handleChange('gender')}
                 />
                 <label htmlFor='gender-2' className='ml-2 text-sm font-medium text-gray-900 dark:text-gray-300'>
@@ -172,8 +193,8 @@ export default function AddStudent() {
                   id='gender-3'
                   type='radio'
                   name='gender'
-                  value='other'
-                  checked={formState.gender === 'other'}
+                  value={gender.other}
+                  checked={formState.gender === gender.other}
                   className='h-4 w-4 border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-blue-600'
                   onChange={handleChange('gender')}
                 />
