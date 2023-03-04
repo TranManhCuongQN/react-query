@@ -42,11 +42,21 @@ export default function Students() {
   const totalPage = Math.ceil(totalStudentCount / LIMIT)
 
   // loading về cái status (status nó đại diện data có hay không). Data có rồi nên loading nó ko load nữa, mà isFetching là true mặc dù data đã có nó vẫn fetch lại API(nó cập nhật dữ liệu mới)
-  console.log('isLoading', isLoading, 'isFetching', isFetching)
+  // console.log('isLoading', isLoading, 'isFetching', isFetching)
 
   return (
     <div>
       <h1 className='text-lg'>Students</h1>
+      <div className='mt-6'>
+        {' '}
+        <Link
+          to='/students/add'
+          className=' rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 '
+        >
+          Add Student
+        </Link>
+      </div>
+
       {/* //* sử dụng useEffect() */}
       {/* {isLoading && (
         <>

@@ -1,4 +1,4 @@
-import { Students } from 'types/students.type'
+import { Students, Student } from 'types/students.type'
 import http from 'utils/https'
 
 export const getStudents = (page: number, limit: number | string) =>
@@ -9,3 +9,6 @@ export const getStudents = (page: number, limit: number | string) =>
       _limit: limit
     }
   })
+
+// post<Students> quy định kiểu trả về là Student
+export const addStudent = (student: Omit<Student, 'id'>) => http.post<Student>('/students', student)
