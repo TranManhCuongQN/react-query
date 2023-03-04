@@ -10,5 +10,11 @@ export const getStudents = (page: number, limit: number | string) =>
     }
   })
 
+export const getStudent = (id: number | string) => http.get<Student>(`students/${id}`)
+
 // post<Students> quy định kiểu trả về là Student
 export const addStudent = (student: Omit<Student, 'id'>) => http.post<Student>('/students', student)
+
+export const updateStudent = (id: number | string, student: Student) => http.put<Student>(`students/${id}`, student)
+
+export const deleteStudent = (id: number | string) => http.delete<{}>(`students/${id}`)

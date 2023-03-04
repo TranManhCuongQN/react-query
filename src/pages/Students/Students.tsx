@@ -1,10 +1,11 @@
-import { getStudents } from 'apis/students.api'
+import { deleteStudent, getStudents } from 'apis/students.api'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Students as StudentsType } from 'types/students.type'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useQueyString } from 'utils/utils'
 import classNames from 'classnames'
+import { toast } from 'react-toastify'
 
 const LIMIT = 10
 export default function Students() {
@@ -43,6 +44,17 @@ export default function Students() {
 
   // loading về cái status (status nó đại diện data có hay không). Data có rồi nên loading nó ko load nữa, mà isFetching là true mặc dù data đã có nó vẫn fetch lại API(nó cập nhật dữ liệu mới)
   // console.log('isLoading', isLoading, 'isFetching', isFetching)
+
+  const deleteStudentMutation = useMutation({
+    mutationFn: (id: number | string) => deleteStudent(id),
+    onSuccess: (_, id) => {
+      toast.success(`Xóa thành công student với id là ${id}`)
+    }
+  })
+
+  const handleDelete = (id: number) => {
+    deleteStudentMutation.mutate(id)
+  }
 
   return (
     <div>
@@ -191,12 +203,17 @@ export default function Students() {
                   <td className='py-4 px-6'>{student.email}</td>
                   <td className='py-4 px-6 text-right'>
                     <Link
-                      to='/students/1'
+                      to={`/students/${student.id}`}
                       className='mr-5 font-medium text-blue-600 hover:underline dark:text-blue-500'
                     >
                       Edit
                     </Link>
-                    <button className='font-medium text-red-600 dark:text-red-500'>Delete</button>
+                    <button
+                      className='font-medium text-red-600 dark:text-red-500'
+                      onClick={() => handleDelete(student.id)}
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))}

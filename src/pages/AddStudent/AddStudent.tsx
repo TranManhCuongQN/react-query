@@ -1,11 +1,12 @@
-import { useMutation } from '@tanstack/react-query'
-import { addStudent } from 'apis/students.api'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { addStudent, getStudent, updateStudent } from 'apis/students.api'
 import { useMemo, useState } from 'react'
-import { useMatch } from 'react-router-dom'
+import { useMatch, useParams } from 'react-router-dom'
+import { toast } from 'react-toastify'
 import { Student } from 'types/students.type'
 import { isAxiosError } from 'utils/utils'
 
-type FormStateType = Omit<Student, 'id'>
+type FormStateType = Omit<Student, 'id'> | Student
 const initialFormState: FormStateType = {
   first_name: '',
   last_name: '',
@@ -28,53 +29,83 @@ export default function AddStudent() {
 
   // Nếu có data thì chúng ta ở chế độ thêm, không có data chúng ta ở chế độ edit
   const isAddMode = Boolean(addMatch)
+  const { id } = useParams()
 
   const [formState, setFormState] = useState<FormStateType>(initialFormState)
 
   // mutate này là là async function (là 1 function xử lý bất đồng bộ nhưng nó ko return 1 promise)
   // reset sẽ reset error, data về giá trị ban đầu
   // mutateAsync cũng giống mutate nhưng nó return về 1 promise nên ta handle đc bất đồng bộ
-  const { mutate, mutateAsync, error, data, reset } = useMutation({
+  const addStudentMutation = useMutation({
     mutationFn: (body: FormStateType) => {
       //handle data here
       return addStudent(body)
     }
   })
 
+  useQuery({
+    queryKey: ['student', id],
+    queryFn: () => getStudent(id as string),
+
+    // nó truyền id undefined vào, để handle vấn đề này query cho 1 option enabled khi id của ta có data thì ta mới cho enable (khi id khác undefined thì queryFn mới đc gọi)
+    enabled: id !== undefined,
+
+    // khi Fetch api thành công onSuccess
+    onSuccess: (data) => {
+      setFormState(data.data)
+    }
+  })
+
+  const updateStudentMutation = useMutation({
+    mutationFn: (_) => {
+      return updateStudent(id as string, formState as Student)
+    }
+  })
+
   const errorForm: FormError = useMemo(() => {
+    const error = isAddMode ? addStudentMutation.error : updateStudentMutation.error
     if (isAxiosError<{ error: FormError }>(error) && error.response?.status === 422) {
       return error.response?.data.error
     }
     return null
-  }, [error])
+  }, [addStudentMutation.error, isAddMode, updateStudentMutation.error])
 
   // Dùng currying
   const handleChange = (name: keyof FormStateType) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormState((prev) => ({ ...prev, [name]: e.target.value }))
-    if (data || error) {
-      reset()
+    if (addStudentMutation.data || addStudentMutation.error) {
+      addStudentMutation.reset()
     }
   }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    try {
-      // cái nào return về promise mới await, còn ko return về promise ko thể awit
-      await mutateAsync(formState)
-      setFormState(initialFormState)
-    } catch (error) {
-      console.log(error)
-    }
+    if (isAddMode) {
+      try {
+        // cái nào return về promise mới await, còn ko return về promise ko thể awit
+        await addStudentMutation.mutateAsync(formState)
+        setFormState(initialFormState)
+        toast.success('Thêm thành công!')
+      } catch (error) {
+        console.log(error)
+      }
 
-    // onError khi nó fetchAPI xong rồi nó có lỗi gì xảy ra thì cái onError này sẽ chạy (callback)
-    // onSuccess khi nó fetchAPI xong không có lỗi xảy ra thì cái onSuccess này sẽ chạy (callback)
-    // onSettled khi nó fetchAPI xong thì bất kể lỗi hay ko lỗi thì nó sẽ chạy (callback)
-    // mutate(formState, {
-    //   onSuccess: () => {
-    //     setFormState(initialFormState)
-    //   }
-    // })
+      // onError khi nó fetchAPI xong rồi nó có lỗi gì xảy ra thì cái onError này sẽ chạy (callback)
+      // onSuccess khi nó fetchAPI xong không có lỗi xảy ra thì cái onSuccess này sẽ chạy (callback)
+      // onSettled khi nó fetchAPI xong thì bất kể lỗi hay ko lỗi thì nó sẽ chạy (callback)
+      // mutate(formState, {
+      //   onSuccess: () => {
+      //     setFormState(initialFormState)
+      //   }
+      // })
+    } else {
+      updateStudentMutation.mutate(undefined, {
+        onSuccess: (data) => {
+          toast.success('Update thành công!')
+        }
+      })
+    }
   }
 
   return (
@@ -247,7 +278,7 @@ export default function AddStudent() {
           type='submit'
           className='w-full rounded-lg bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 sm:w-auto'
         >
-          Submit
+          {isAddMode ? 'Add' : 'Edit'}
         </button>
       </form>
     </div>

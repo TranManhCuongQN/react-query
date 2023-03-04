@@ -78,3 +78,5 @@ function C() {
 - Trước khi `cacheTime` hết thì ông `C` comopnent được mount. cache data `['todos']` được trả về ngay lập tức cho `C` và `fetchTodos` sẽ chạy ngầm. Khi nó hoàn thành thì sẽ cập nhật lại cache với data mới.
 - Cuối cùng thì `C` unmount
 - Không còn ai subcribe đến cache data `['todos']` trong 5 phút tiếp theo nữa và cache data `['todos']` bị xóa hoàn toàn
+
+react-query có 1 cơ chế đó là nó sẽ fetch lại khi ta focus lại trang web của ta nên khi mình focus vào thì nó sẽ tự động fetch lại api
