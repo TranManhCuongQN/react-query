@@ -29,18 +29,35 @@ export default function Students() {
 
   // nếu page undefined thì lấy là 1
   const page = Number(queryString.page) || 1
-  const { data, isLoading, status, error, fetchStatus, isFetching } = useQuery({
-    // phải đặt params vào trong queryKey. Khi đặt vào trong queryKey khi cái params (cụ thể page) thay đổi thì nó sẽ tự động gọi lại function
+  // const { data, isLoading, status, error, fetchStatus, isFetching } = useQuery({
+  //   // phải đặt params vào trong queryKey. Khi đặt vào trong queryKey khi cái params (cụ thể page) thay đổi thì nó sẽ tự động gọi lại function
+  //   queryKey: ['students', page],
+
+  //   // queryFn nhận vào 1 function, nếu truyền như getStudents(page,10) thì truyền giá trị return của getStudents như thế ko đúng. queryFn nhận vào là 1 cái function nên ta truyền callback ()=>getStudents(page,10)
+  //   queryFn: () => getStudents(page, LIMIT),
+
+  //   // giữ lại data trước đó ko đc xét undefined (khi mà nó fetch thành công thì nó cập nhật lại data cho chúng ta)
+  //   keepPreviousData: true
+  // })
+
+  const studentsQuery = useQuery({
     queryKey: ['students', page],
+    // truyền signal để cancel gọi api luôn
+    queryFn: () => {
+      const controller = new AbortController()
+      setTimeout(() => {
+        // sau 5s cho nó cancel
+        controller.abort()
+      }, 5000)
+      return getStudents(page, LIMIT, controller.signal)
+    },
+    keepPreviousData: true,
 
-    // queryFn nhận vào 1 function, nếu truyền như getStudents(page,10) thì truyền giá trị return của getStudents như thế ko đúng. queryFn nhận vào là 1 cái function nên ta truyền callback ()=>getStudents(page,10)
-    queryFn: () => getStudents(page, LIMIT),
-
-    // giữ lại data trước đó ko đc xét undefined (khi mà nó fetch thành công thì nó cập nhật lại data cho chúng ta)
-    keepPreviousData: true
+    // tự động gọi lại một request khi có lỗi xảy ra trong quá trình thực hiện request
+    retry: 1
   })
 
-  const totalStudentCount = Number(data?.headers['x-total-count'] || 0)
+  const totalStudentCount = Number(studentsQuery.data?.headers['x-total-count'] || 0)
   const totalPage = Math.ceil(totalStudentCount / LIMIT)
 
   // loading về cái status (status nó đại diện data có hay không). Data có rồi nên loading nó ko load nữa, mà isFetching là true mặc dù data đã có nó vẫn fetch lại API(nó cập nhật dữ liệu mới)
@@ -72,9 +89,34 @@ export default function Students() {
     })
   }
 
+  // * refetchStudents
+  const refetchStudents = () => {
+    studentsQuery.refetch()
+  }
+
+  // * cancelRequestStudents
+  const cancelRequestStudents = () => {
+    // khi cancel này nó mới ở cấp độ react-query (data===null) còn api thì nó vẫn còn gọi
+    queryClient.cancelQueries({ queryKey: ['students', page] })
+  }
+
   return (
     <div>
       <h1 className='text-lg'>Students</h1>
+      <button
+        type='button'
+        className='mr-2 mb-2 rounded-lg bg-green-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-800 focus:outline-none focus:ring-4 focus:ring-green-300 dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800'
+        onClick={refetchStudents}
+      >
+        Refetch Students
+      </button>
+      <button
+        type='button'
+        className='mr-2 mb-2 rounded-lg bg-yellow-400 px-5 py-2.5 text-sm font-medium text-white hover:bg-yellow-500 focus:outline-none focus:ring-4 focus:ring-yellow-300 dark:focus:ring-yellow-900'
+        onClick={cancelRequestStudents}
+      >
+        Cancel Request Students
+      </button>
       <div className='mt-6'>
         {' '}
         <Link
@@ -160,7 +202,7 @@ export default function Students() {
       )} */}
 
       {/* //* Sử dụng reactQuery */}
-      {isLoading && (
+      {studentsQuery.isLoading && (
         <>
           <div role='status' className='mt-6 animate-pulse'>
             <div className='mb-4 h-4  rounded bg-gray-200 dark:bg-gray-700' />
@@ -181,7 +223,7 @@ export default function Students() {
         </>
       )}
 
-      {!isLoading && (
+      {!studentsQuery.isLoading && (
         <div className='relative mt-6 overflow-x-auto shadow-md sm:rounded-lg'>
           <table className='w-full text-left text-sm text-gray-500 dark:text-gray-400'>
             <thead className='bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400'>
@@ -204,7 +246,7 @@ export default function Students() {
               </tr>
             </thead>
             <tbody>
-              {data?.data.map((student) => (
+              {studentsQuery.data?.data.map((student) => (
                 <tr
                   className='border-b bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-600'
                   key={student.id}
